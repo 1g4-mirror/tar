@@ -1377,14 +1377,19 @@ fdbase_opendir (char const *file_name, bool alternate, int child_oflags)
 		}
 	    }
 
+	  /* Remove any old directory info, and add new info if the new
+	     directory can be opened.  */
+	  if (0 < c->subdirlen && !chdirable (fd))
+	    close (fd);
+
 	  int newfd = open_subdir (chdir_fd, c->subdir, child_oflags);
 	  if (newfd < 0)
-	    fd = BADFD == -1 ? newfd : BADFD;
+	    {
+	      c->subdirlen = 0;
+	      fd = BADFD == -1 ? newfd : BADFD;
+	    }
 	  else
 	    {
-	      /* Remove any old directory info, and add new info.  */
-	      if (0 < c->subdirlen && !chdirable (fd))
-		close (fd);
 	      c->chdir_current = chdir_current;
 	      c->fd = fd = newfd;
 	      c->subdirlen = subdirlen;
