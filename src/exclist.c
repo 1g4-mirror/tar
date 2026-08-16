@@ -66,6 +66,8 @@ struct exclist
 {
   struct exclist *next, *prev;
   int flags;
+  char *prefix;
+  size_t prefix_len;
   struct exclude *excluded;
 };
 
@@ -111,6 +113,8 @@ info_attach_exclist (struct tar_stat_info *dir)
 	  struct exclist *ent = xmalloc (sizeof *ent);
 	  ent->excluded = ex;
 	  ent->flags = file->flags;
+	  ent->prefix_len = strlen (dir->orig_file_name);
+	  ent->prefix = xstrdup (dir->orig_file_name);
 	  ent->prev = tail;
 	  ent->next = NULL;
 
@@ -133,6 +137,7 @@ info_free_exclist (struct tar_stat_info *dir)
     {
       struct exclist *next = ep->next;
       free_exclude (ep->excluded);
+      free (ep->prefix);
       free (ep);
       ep = next;
     }
@@ -146,7 +151,6 @@ bool
 excluded_name (char const *name, struct tar_stat_info *st)
 {
   struct exclist *ep;
-  const char *rname = NULL;
   char *bname = NULL;
   bool result;
   int nr = 0;
@@ -164,12 +168,18 @@ excluded_name (char const *name, struct tar_stat_info *st)
     {
       for (ep = st->exclude_list; ep; ep = ep->next)
 	{
+	  const char *rname;
+
 	  if (ep->flags & nr)
 	    continue;
+
 	  if ((result = excluded_file_name (ep->excluded, name)))
 	    break;
 
-	  if (!rname)
+	  if (ep->prefix_len && strlen (name) > ep->prefix_len &&
+	      memcmp (name, ep->prefix, ep->prefix_len) == 0)
+	    rname = name + ep->prefix_len;
+          else
 	    rname = name + dotslashlen (name);
 	  if ((result = excluded_file_name (ep->excluded, rname)))
 	    break;

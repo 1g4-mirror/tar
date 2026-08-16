@@ -110,6 +110,8 @@ TESTSUITE_AT = \
  exclude18.at\
  exclude19.at\
  exclude20.at\
+ exclude21.at\
+ exclude22.at\
  extrac01.at\
  extrac02.at\
  extrac03.at\
