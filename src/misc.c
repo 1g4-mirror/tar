@@ -1323,83 +1323,68 @@ fdbase_opendir (char const *file_name, bool alternate, int child_oflags)
       return (struct fdbase) { .fd = BADFD, .base = name };
     }
 
-  int fd;
-
   /* Try to reuse fdbase_cache[0] or (if ALTERNATE) fdbase_cache[1].  */
   for (struct fdbase_cache *c = fdbase_cache; ; c++)
     {
-      fd = c->fd;
+      int fd = c->fd;
       bool submatch = (0 < c->subdirlen && c->subdirlen <= subdirlen
 		       && c->chdir_current == chdir_current
 		       && !ISSLASH (name[c->subdirlen])
 		       && memeq (c->subdir, name, c->subdirlen));
       if (submatch && c->subdirlen == subdirlen)
-	break;
+	return (struct fdbase) { .fd = fd, .base = base };
       if (c == fdbase_cache + alternate)
 	{
 	  /* Cannot reuse, so evict and reget fdbase_cache[ALTERNATE].
-	     Start by copying the new directory's name into the cache.  */
-	  char *subdir = c->subdir;
-	  if (c->subdiralloc <= subdirlen)
-	    c->subdir = subdir = xpalloc (subdir, &c->subdiralloc,
-					  subdirlen - c->subdiralloc + 1,
-					  -1, 1);
-	  char *p = mempcpy (subdir, name, subdirlen);
-	  *p = '\0';
+	     Start by copying the new directory's name into the cache,
+	     but put it after any existing name if the new name is
+	     not a subdirectory of the old one.
+	     If the new name works it will be copied over the existing name;
+	     if not, the existing name will survive.
+	     Null-terminate the new name for open_subdir;
+	     there is no need to null-terminate the old name.  */
 
-	  if (submatch && c->subdirlen < subdirlen
-	      && !ISSLASH (subdir[c->subdirlen]))
+	  bool new_is_subdir_of_old = submatch && c->subdirlen < subdirlen;
+	  idx_t new_subdir_offset = new_is_subdir_of_old ? 0 : c->subdirlen;
+	  idx_t bothsize = new_subdir_offset + subdirlen + 1;
+	  if (c->subdiralloc < bothsize)
+	    c->subdir = xpalloc (c->subdir, &c->subdiralloc,
+				 bothsize - c->subdiralloc, -1, 1);
+	  char *subdir = c->subdir + new_subdir_offset;
+	  char *subdirend = mempcpy (subdir, name, subdirlen);
+	  *subdirend = '\0';
+
+	  if (new_is_subdir_of_old)
 	    {
 	      /* The new directory is a subdirectory of the old,
 		 so open relative to FD rather than to chdir_fd.  */
 	      int subfd = open_subdir (fd, &subdir[c->subdirlen],
 				       child_oflags);
 	      if (subfd < 0)
-		{
-		  /* Keep the old directory cached and report open failure,
-		     unless EMFILE/ENFILE means it's possible that falling
-		     through to close the old directory would mean we
-		     could successfully retry from the chdir_fd level.
-		     When reporting failure, there is no need to
-		     null-terminate the old directory, since the code does
-		     not assume null termination.  */
-		  if (errno != EMFILE && errno != ENFILE)
-		    return (struct fdbase) { .fd = BADFD, .base = base };
-		}
-	      else
-		{
-		  /* Replace the old directory with the new one.  */
-		  if (!chdirable (fd))
-		    close (fd);
-		  c->fd = subfd;
-		  c->subdirlen = subdirlen;
-		  return (struct fdbase) { .fd = subfd, .base = base };
-		}
+		return (struct fdbase) { .fd = BADFD, .base = base };
+
+	      /* Replace the old directory info.  */
+	      if (!chdirable (fd))
+		close (fd);
+	      c->fd = subfd;
+	      c->subdirlen = subdirlen;
+	      return (struct fdbase) { .fd = subfd, .base = base };
 	    }
 
-	  /* Remove any old directory info, and add new info if the new
-	     directory can be opened.  */
+	  int newfd = open_subdir (chdir_fd, subdir, child_oflags);
+	  if (newfd < 0)
+	    return (struct fdbase) { .fd = BADFD, .base = base };
+
+	  /* Replace the old directory info (if any).  */
 	  if (0 < c->subdirlen && !chdirable (fd))
 	    close (fd);
-
-	  int newfd = open_subdir (chdir_fd, c->subdir, child_oflags);
-	  if (newfd < 0)
-	    {
-	      c->subdirlen = 0;
-	      fd = BADFD == -1 ? newfd : BADFD;
-	    }
-	  else
-	    {
-	      c->chdir_current = chdir_current;
-	      c->fd = fd = newfd;
-	      c->subdirlen = subdirlen;
-	    }
-
-	  break;
+	  c->chdir_current = chdir_current;
+	  c->fd = newfd;
+	  c->subdirlen = subdirlen;
+	  memmove (c->subdir, subdir, subdirlen);
+	  return (struct fdbase) { .fd = newfd, .base = base };
 	}
     }
-
-  return (struct fdbase) { .fd = fd, .base = base };
 }
 
 struct fdbase
