@@ -544,6 +544,7 @@ m4_include([onetop03.at])
 m4_include([onetop04.at])
 m4_include([onetop05.at])
 m4_include([onetop06.at])
+m4_include([onetop07.at])
 
 AT_BANNER([Star tests])
 m4_include([star/gtarfail.at])

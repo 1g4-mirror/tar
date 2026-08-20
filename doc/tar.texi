@@ -3291,8 +3291,7 @@ Extract files relative to @var{dir},
 ignoring any @var{dir} prefixes in the archive.
 An absent @var{dir} defaults to
 the base name of the archive minus any recognized archive suffix.
-If @var{dir} is relative, it is relative to the working directory;
-if absolute, any @option{--directory} (@option{-C}) options are irrelevant.
+If @var{dir} is relative, it is relative to the working directory.
 @xref{directory}.
 
 @opsummary{overwrite}
@@ -9465,8 +9464,7 @@ Recognized file name suffixes are @samp{.tar},
 and any compression suffixes recognizable by @xref{--auto-compress}.
 
 If @var{dir} is absolute, extract all files under that directory;
-any @option{-C} options are irrelevant,
-and @var{dir} itself is exempt from the usual safety rules
+@var{dir} itself is exempt from the usual safety rules
 prohibiting extraction outside the working directory.
 The two main differences between @samp{--one-top-level=/abs/olute}
 and @samp{-C /abs/olute} are that the former affects all files
@@ -9477,7 +9475,9 @@ whereas in the latter @file{/abs/olute} must already exist.
 
 The @option{--one-top-level} option can be used only when extracting,
 comparing, or reading from the archive.
-It is incompatible with the @option{--absolute-names} (@option{-P}) option.
+It is incompatible with the @option{--absolute-names} (@option{-P}) option,
+and if @var{dir} is absolute it is incompatible with the
+@option{--directory} (@option{-C}) option.
 @end table
 
 All filename arguments appearing after a

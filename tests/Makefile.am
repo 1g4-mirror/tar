@@ -205,6 +205,7 @@ TESTSUITE_AT = \
  onetop04.at\
  onetop05.at\
  onetop06.at\
+ onetop07.at\
  opcomp01.at\
  opcomp02.at\
  opcomp03.at\

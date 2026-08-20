@@ -38,10 +38,11 @@ option.
 ** The --one-top-level option now requires either -x or -d mode.
    Previously the behavior was unspecified in other operation modes.
 
-** If DIR is absolute, the --one-top-level=DIR option now extracts all
-   files relative to DIR, without stripping leading DIR from file names.
-   Any -C options are ignored.  Formerly, the behavior was
-   undocumented and differed from one tar version to the next.
+** If DIR is absolute, the --one-top-level=DIR option is now incompatible
+   with the --directory (-C) option, and it now extracts all files
+   relative to DIR, without stripping leading DIR from file names.
+   Formerly, the behavior was undocumented and differed from one tar
+   version to the next.
 
 * Bug fixes
 

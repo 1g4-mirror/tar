@@ -979,7 +979,10 @@ struct wd
    directory.  Ordinarily the remaining entries are for -C options.
    But if --one-top-level, each entry is followed by another entry for
    its --one-top-level counterpart, so that ordinary entries are
-   even-numbered and --one-top-level entries are odd-numbered.  */
+   even-numbered and --one-top-level entries are odd-numbered.
+   And if --one-top-level specifies an absolute directory,
+   there are just two entries, one for the initial working directory
+   and one for the absolute directory.  */
 static struct wd *wd;
 
 /* The number of working directories in the vector.  */
@@ -1046,13 +1049,18 @@ ensure_wd (void)
 }
 
 /* DIR is the operand of a -C option; add it to vector of chdir targets,
-   and return the index of its location.  If --one-top-level-dir, add
-   two targets to the vector.  However, if DIR is "." or an equivalent,
-   or if --one-top-level-dir is an absolute file name,
+   and return the index of its location.  If --one-top-level-dir=ONETOP
+   is specified, add two targets to the vector if ONETOP is relative
+   and report an error otherwise.  However, if DIR is "." or an equivalent,
    just reuse the last item in the vector.  */
 idx_t
 chdir_arg (char *dir)
 {
+  /* Unless this is the trivial chdir_arg (".") at start, this is an
+     error when combined with --one-top-level=X where X is absolute.  */
+  if (wd && one_top_level_dir && IS_ABSOLUTE_FILE_NAME (one_top_level_dir))
+    paxfatal (0, _("-C and --one-top-level='/...' are incompatible"));
+
   ensure_wd ();
 
   /* Optimize the common special case of the working directory,
@@ -1063,10 +1071,6 @@ chdir_arg (char *dir)
       if (!dir[dir[0] == '.'])
 	return wd_count - 1;
     }
-
-  /* Optimize --one-top-level=X where X is an absolute file name.  */
-  if (one_top_level_dir && IS_ABSOLUTE_FILE_NAME (one_top_level_dir))
-    return wd_count - 1;
 
   ptrdiff_t shortage = 1 + !!one_top_level_dir - (wd_alloc - wd_count);
   if (0 < shortage)
