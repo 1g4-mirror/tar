@@ -3287,23 +3287,13 @@ directory.
 
 @opsummary{one-top-level}
 @item --one-top-level[=@var{dir}]
-Tells @command{tar} to use a directory beneath the extraction directory
-(or the one passed to @option{-C}) to prevent @command{tar}
-from accessing files outside that directory.
-If @var{dir} is absent, the name of the directory
-is the base name of the archive minus any recognized archive suffix.
-If @var{dir} is an absolute file name, that is the only such directory;
-otherwise, the working directory and the directories specified by
-any @option{-C} options each have the named subdirectory.
-Any member names that do not begin
-with that directory name (after
-transformations from @option{--transform} and
-@option{--strip-components}) will be prefixed with it.  Recognized
-file name suffixes are @samp{.tar}, and any compression suffixes
-recognizable by @xref{--auto-compress}.
-
-This option can be used only when extracting, comparing, or reading
-from the archive.
+Extract files relative to @var{dir},
+ignoring any @var{dir} prefixes in the archive.
+An absent @var{dir} defaults to
+the base name of the archive minus any recognized archive suffix.
+If @var{dir} is relative, it is relative to the working directory;
+if absolute, any @option{--directory} (@option{-C}) options are irrelevant.
+@xref{directory}.
 
 @opsummary{overwrite}
 @item --overwrite
@@ -9440,23 +9430,59 @@ mentioned by name on the standard error.
 @node directory
 @subsection Changing the Working Directory
 
-@cindex Changing directory mid-stream
-@cindex Directory, changing mid-stream
+@cindex Changing working directory
+@cindex Directory, changing
 @cindex Working directory, specifying
 To change the working directory in the middle of a list of file names,
 either on the command line or in a file specified using
 @option{--files-from} (@option{-T}), use @option{--directory} (@option{-C}).
 This will change the working directory to the specified directory
 after that point in the list.
+You can also use the @code{--one-top-level} option to alter
+the working directory location, though this option applies to all file names.
 
 @table @option
 @opindex directory
 @item --directory=@var{directory}
 @itemx -C @var{directory}
-Changes the working directory in the middle of a command line.
+Change the working directory for later files in the command line.
+
+@item --one-top-level
+@item --one-top-level[=@var{dir}]
+Change the effective working directory to @var{dir} for all files.
+If @var{dir} does not already exist, create it and any ancestors as
+necessary before extracting any files into it.
+
+If @var{dir} is relative, extract all files under that directory;
+if @option{-C} is also given,
+@var{dir} is relative to the @option{-C} directory.
+Prefix any member names that do not begin with @var{dir}
+(after transformations from @option{--transform} and
+@option{--strip-components}) with @var{dir}.
+An absent @var{dir} defaults to the base name of the archive
+minus any recognized archive suffix.
+Recognized file name suffixes are @samp{.tar},
+and any compression suffixes recognizable by @xref{--auto-compress}.
+
+If @var{dir} is absolute, extract all files under that directory;
+any @option{-C} options are irrelevant,
+and @var{dir} itself is exempt from the usual safety rules
+prohibiting extraction outside the working directory.
+The two main differences between @samp{--one-top-level=/abs/olute}
+and @samp{-C /abs/olute} are that the former affects all files
+whereas the latter affects only later files,
+and in the former @file{/abs/olute} and its ancestors are created
+if they do not already exist
+whereas in the latter @file{/abs/olute} must already exist.
+
+The @option{--one-top-level} option can be used only when extracting,
+comparing, or reading from the archive.
+It is incompatible with the @option{--absolute-names} (@option{-P}) option.
 @end table
 
-All filename arguments appearing after this option will be taken
+All filename arguments appearing after a
+@option{--directory=@var{directory}} (@option{-C @var{directory}}) option
+are taken
 relative to @var{directory}.  For example,
 
 @smallexample
@@ -9511,7 +9537,7 @@ the original working directory of @command{tar}, due to a previous
 @option{--directory} option.
 
 There is an important exception, though: the @option{-C} option does
-not affect filename arguments to another options that follow it, in
+not affect filename arguments to other options that follow it, in
 particular @option{-f}.  This means that the example above can be
 written as
 
@@ -9538,6 +9564,7 @@ The command-line options not affected by @option{-C} are:
 @item @option{-T}, @option{--files-from}
 @item @option{-X}, @option{--exclude-from}
 @item @option{--mtime}
+@item @option{--one-top-level=@var{dir}} when @var{dir} is absolute
 @item @option{--owner-map}
 @item @option{-f}, @option{--file}
 @item @option{-F}, @option{--info-script}, @option{--new-volume-script}
@@ -13171,8 +13198,10 @@ by an untrusted user, that user therefore can write into any file
 under the working directory.  When extracting from an
 untrusted archive, it is therefore good practice to create an empty
 directory and run @command{tar} in that directory.  You can use the
-@option{--directory} (@option{-C}) option to specify the working
-directory (@pxref{directory}).
+@option{--directory} (@option{-C}) and @option{--one-top-level}
+options to specify the working directory; the latter option starts by
+creating the working directory for you if it does not already exist.
+@xref{directory}.
 
 When extracting from an archive, @command{tar} by default rejects attempts to
 modify files outside the working directory.

@@ -771,11 +771,10 @@ fixup_delayed_set_stat (char const *src, char const *dst)
 }
 
 /* Ensure that a directory exists by creating it and ancestors as needed.
-   If MAKEDIR == MAKEDIR_FULL the directory is FILE_NAME;
-   otherwise it is FILE_NAME's parent directory.
-   Follow symlinks.  Do not overwrite existing files.
-   Allow races with other processes that are also trying to create
-   the requested directory.
+   Allow races with other processes that are doing likewise.
+   Do not overwrite existing files.
+   Follow symlinks, but do not escape the destination directory
+   unless MAKEDIR == MAKEDIR_FULL_ESCAPE.
    Possibly temporarily modify FILE_NAME if it contains slashes,
    but restore it before returning.
    Return:
@@ -783,7 +782,23 @@ fixup_delayed_set_stat (char const *src, char const *dst)
     0 if the requested directory likely exists
       (and if MAKEDIR == MAKEDIR_PARENT_CHECK, check that it does exist),
    -1 (issuing a diagnostic) otherwise.  */
-enum makedir { MAKEDIR_PARENT_CHECK = -1, MAKEDIR_PARENT, MAKEDIR_FULL };
+enum makedir
+  {
+    /* Make the file name's parent directory,
+       and also check that it was made.  */
+    MAKEDIR_PARENT_CHECK = -1,
+
+    /* Make the file name's parent directory,
+       but for efficiency do not check that it was actually made.  */
+    MAKEDIR_PARENT,
+
+    /* Treat the entire file name as the name of the directory to be made.  */
+    MAKEDIR_FULL,
+
+    /* Likewise, but ignore the usual fence around the destination
+       directory.  */
+    MAKEDIR_FULL_ESCAPE
+  };
 static int
 make_directories (char *file_name, enum makedir makedir)
 {
@@ -841,7 +856,8 @@ make_directories (char *file_name, enum makedir makedir)
       *cursor = '\0';		/* truncate the name there */
       desired_mode = MODE_RWX & ~ newdir_umask;
       mode = desired_mode | (we_are_root ? 0 : MODE_WXUSR);
-      struct fdbase f = fdbase (file_name);
+      struct fdbase f = fdbase_escape (file_name,
+				       makedir == MAKEDIR_FULL_ESCAPE);
 
       if (f.fd != BADFD && mkdirat (f.fd, f.base, mode) == 0)
 	{
@@ -918,7 +934,12 @@ make_directories (char *file_name, enum makedir makedir)
 bool
 create_dir (char *dir)
 {
-  return 0 <= make_directories (dir, MAKEDIR_FULL);
+  /* If --one-top-level=TOPDIR is used and TOPDIR is absolute,
+     DIR must be TOPDIR or an ancestor, so let DIR escape.  */
+  return 0 <= make_directories (dir,
+				((one_top_level_dir
+				  && IS_ABSOLUTE_FILE_NAME (one_top_level_dir))
+				 ? MAKEDIR_FULL_ESCAPE : MAKEDIR_FULL));
 }
 
 /* Return true if FILE_NAME (with status *STP, if STP) is not a

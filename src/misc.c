@@ -32,7 +32,7 @@
 static void namebuf_add_dir (namebuf_t, char const *);
 static char *namebuf_finish (namebuf_t);
 static const char *tar_getcdpath (idx_t);
-static struct fdbase fdbase_opendir (char const *, bool, int);
+static struct fdbase fdbase_opendir (char const *, bool, bool, int);
 
 char const *
 quote_n_colon (int n, char const *arg)
@@ -1109,7 +1109,7 @@ chdir_do (idx_t i, bool create)
 	    chdir_do ((i - 1) & ~+one_top_level, false);
 
 	  int oflags = open_searchdir_how.flags & ~O_NOFOLLOW;
-	  fd = fdbase_opendir (curr->name, false, oflags).fd;
+	  fd = fdbase_opendir (curr->name, false, true, oflags).fd;
 	  if (fd < 0)
 	    {
 	      if (errno == ENOENT)
@@ -1119,7 +1119,7 @@ chdir_do (idx_t i, bool create)
 		      if (!create_dir (curr->name))
 			fatal_exit ();
 		      /* Directory likely exists now; retry.  */
-		      fd = fdbase_opendir (curr->name, false, oflags).fd;
+		      fd = fdbase_opendir (curr->name, false, true, oflags).fd;
 		    }
 		  else if (i & one_top_level)
 		    {
@@ -1282,12 +1282,13 @@ open_subdir (int fd, char const *subdir, int oflags)
    only the alternate cache; otherwise, use and update only the main cache;
    this means a call with ALTERNATE cannot invalidate a call without.
    If FILE_NAME is relative, it is relative to chdir_fd.
-   If CHILD_OFLAGS, open FILE_NAME itself, posssibly letting it escape from
-   chdir_fd; otherwise, open FILE_NAME's parent but do not let it escape.
+   If CHILD, open FILE_NAME; otherwise open FILE_NAME's parent directory.
+   If OFLAGS, open the directory with those flags, possibly letting it
+   escape from chdir_fd; otherwise, do not let it escape.
    Return AT_FDCWD if FILE_NAME is relative to the working directory.
    Return BADFD (setting errno) on failure.  */
 static struct fdbase
-fdbase_opendir (char const *file_name, bool alternate, int child_oflags)
+fdbase_opendir (char const *file_name, bool alternate, bool child, int oflags)
 {
   char const *name = file_name;
   int dfd = IS_ABSOLUTE_FILE_NAME (file_name) ? AT_FDCWD : chdir_fd;
@@ -1311,10 +1312,10 @@ fdbase_opendir (char const *file_name, bool alternate, int child_oflags)
 	  continue;
     }
 
-  /* For files immediately under CHDIR_FD, and for root directories,
-     just use CHDIR_FD and NAME.  Empty NAME is invalid, though.  */
+  /* For file names immediately under DFD, and for names of root directories,
+     just use DFD and NAME.  Empty NAME is invalid, though.  */
   char const *base = last_component (name);
-  idx_t newdirlen = base + (child_oflags ? strlen (base) : 0) - name;
+  idx_t newdirlen = base + (child ? strlen (base) : 0) - name;
   if (!newdirlen | !*base)
     {
       if (*name)
@@ -1380,7 +1381,7 @@ fdbase_opendir (char const *file_name, bool alternate, int child_oflags)
      open descendant to FD rather than to CHDIR_FD.  */
   bool descendant = old_prefixes_new & chdirmatch;
   int newfd = open_subdir (descendant ? fd : chdir_fd,
-			   &newdir[descendant ? subdirlen : 0], child_oflags);
+			   &newdir[descendant ? subdirlen : 0], oflags);
   if (newfd < 0)
     return (struct fdbase) { .fd = BADFD, .base = base };
 
@@ -1395,22 +1396,42 @@ fdbase_opendir (char const *file_name, bool alternate, int child_oflags)
   return (struct fdbase) { .fd = newfd, .base = base };
 }
 
+/* Return an fd open to NAME's parent directory
+   along with the corresponding base name.
+   Do not escape from chdir_fd unless ESCAPE or unless -P is used.  */
+struct fdbase
+fdbase_escape (char const *name, bool escape)
+{
+  return fdbase_opendir (name, false, false,
+			 escape ? open_searchdir_how.flags : 0);
+}
+
+/* Return an fd open to NAME's parent directory
+   along with the corresponding base name.
+   Do not escape from chdir_fd unless -P is used.  */
 struct fdbase
 fdbase (char const *name)
 {
-  return fdbase_opendir (name, false, 0);
+  return fdbase_escape (name, false);
 }
 
+/* Return an fd open to NAME's parent directory
+   along with the corresponding base name.
+   Do not escape from chdir_fd unless -P is used.
+   Use the alternate cache instead of the main one;
+   this is for syscalls like 'linkat' that need two fds.  */
 struct fdbase
 fdbase1 (char const *name)
 {
-  return fdbase_opendir (name, true, 0);
+  return fdbase_opendir (name, true, false, 0);
 }
 
+/* Return an fd open to NAME.
+   Do not escape from chdir_fd unless -P is used.  */
 int
 open_searchdir (char const *name)
 {
-  return fdbase_opendir (name, false, open_searchdir_how.flags).fd;
+  return fdbase_opendir (name, false, true, open_searchdir_how.flags).fd;
 }
 
 
