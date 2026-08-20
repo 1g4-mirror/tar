@@ -1314,8 +1314,8 @@ fdbase_opendir (char const *file_name, bool alternate, int child_oflags)
   /* For files immediately under CHDIR_FD, and for root directories,
      just use CHDIR_FD and NAME.  Empty NAME is invalid, though.  */
   char const *base = last_component (name);
-  idx_t subdirlen = base + (child_oflags ? strlen (base) : 0) - name;
-  if (!subdirlen | !*base)
+  idx_t newdirlen = base + (child_oflags ? strlen (base) : 0) - name;
+  if (!newdirlen | !*base)
     {
       if (*name)
 	return (struct fdbase) { .fd = dfd, .base = name };
@@ -1324,67 +1324,75 @@ fdbase_opendir (char const *file_name, bool alternate, int child_oflags)
     }
 
   /* Try to reuse fdbase_cache[0] or (if ALTERNATE) fdbase_cache[1].  */
-  for (struct fdbase_cache *c = fdbase_cache; ; c++)
+  int fd;
+  idx_t subdirlen;
+  bool chdirmatch;
+  bool submatch;
+  struct fdbase_cache *c;
+  for (c = fdbase_cache; ; c++)
     {
-      int fd = c->fd;
-      bool submatch = (0 < c->subdirlen && c->subdirlen <= subdirlen
-		       && c->chdir_current == chdir_current
-		       && !ISSLASH (name[c->subdirlen])
-		       && memeq (c->subdir, name, c->subdirlen));
-      if (submatch && c->subdirlen == subdirlen)
+      fd = c->fd;
+      subdirlen = c->subdirlen;
+      chdirmatch = c->chdir_current == chdir_current;
+      submatch = (0 < subdirlen && subdirlen <= newdirlen
+		  && !ISSLASH (name[subdirlen])
+		  && memeq (c->subdir, name, subdirlen));
+      if (chdirmatch & submatch && subdirlen == newdirlen)
 	return (struct fdbase) { .fd = fd, .base = base };
       if (c == fdbase_cache + alternate)
-	{
-	  /* Cannot reuse, so evict and reget fdbase_cache[ALTERNATE].
-	     Start by copying the new directory's name into the cache,
-	     but put it after any existing name if the new name is
-	     not a subdirectory of the old one.
-	     If the new name works it will be copied over the existing name;
-	     if not, the existing name will survive.
-	     Null-terminate the new name for open_subdir;
-	     there is no need to null-terminate the old name.  */
-
-	  bool new_is_subdir_of_old = submatch && c->subdirlen < subdirlen;
-	  idx_t new_subdir_offset = new_is_subdir_of_old ? 0 : c->subdirlen;
-	  idx_t bothsize = new_subdir_offset + subdirlen + 1;
-	  if (c->subdiralloc < bothsize)
-	    c->subdir = xpalloc (c->subdir, &c->subdiralloc,
-				 bothsize - c->subdiralloc, -1, 1);
-	  char *subdir = c->subdir + new_subdir_offset;
-	  char *subdirend = mempcpy (subdir, name, subdirlen);
-	  *subdirend = '\0';
-
-	  if (new_is_subdir_of_old)
-	    {
-	      /* The new directory is a subdirectory of the old,
-		 so open relative to FD rather than to chdir_fd.  */
-	      int subfd = open_subdir (fd, &subdir[c->subdirlen],
-				       child_oflags);
-	      if (subfd < 0)
-		return (struct fdbase) { .fd = BADFD, .base = base };
-
-	      /* Replace the old directory info.  */
-	      if (!chdirable (fd))
-		close (fd);
-	      c->fd = subfd;
-	      c->subdirlen = subdirlen;
-	      return (struct fdbase) { .fd = subfd, .base = base };
-	    }
-
-	  int newfd = open_subdir (chdir_fd, subdir, child_oflags);
-	  if (newfd < 0)
-	    return (struct fdbase) { .fd = BADFD, .base = base };
-
-	  /* Replace the old directory info (if any).  */
-	  if (0 < c->subdirlen && !chdirable (fd))
-	    close (fd);
-	  c->chdir_current = chdir_current;
-	  c->fd = newfd;
-	  c->subdirlen = subdirlen;
-	  memmove (c->subdir, subdir, subdirlen);
-	  return (struct fdbase) { .fd = newfd, .base = base };
-	}
+	break;
     }
+
+  /* Cannot reuse, so evict and reget fdbase_cache[ALTERNATE].
+     Start by copying the new directory's name into the cache,
+     but put it after any existing name if the new name is
+     not a subdirectory of the old one.
+     If the new name works it will be copied over the existing name;
+     if not, the existing name will survive.
+     Null-terminate the new name for open_subdir;
+     there is no need to null-terminate the old name.  */
+
+  /* Whether the old directory name prefixes the new name.
+     If also CHDIRMATCH, the old is an ancestor of the new.  */
+  bool old_prefixes_new = submatch && subdirlen < newdirlen;
+
+  /* The old length if reusing old name inside the new; otherwise, 0.
+     Although the code would be correct if this were always 0,
+     it would be slower if names are long.  */
+  idx_t reuselen = old_prefixes_new ? subdirlen : 0;
+
+  /* Offset in the buffer of the new name.
+     Zero if the old name prefixes the new, as the new is an extension.
+     Otherwise, just past the old name.  */
+  idx_t newdir_offset = old_prefixes_new ? 0 : subdirlen;
+
+  idx_t bothsize = newdir_offset + newdirlen + 1;
+  if (c->subdiralloc < bothsize)
+    c->subdir = xpalloc (c->subdir, &c->subdiralloc,
+			 bothsize - c->subdiralloc, -1, 1);
+  char *subdir = c->subdir;
+  char *newdir = subdir + newdir_offset;
+  char *newdirend = mempcpy (newdir + reuselen, name + reuselen,
+			     newdirlen - reuselen);
+  *newdirend = '\0';
+
+  /* If the new directory descends from the old, for speed
+     open descendant to FD rather than to CHDIR_FD.  */
+  bool descendant = old_prefixes_new & chdirmatch;
+  int newfd = open_subdir (descendant ? fd : chdir_fd,
+			   &newdir[descendant ? subdirlen : 0], child_oflags);
+  if (newfd < 0)
+    return (struct fdbase) { .fd = BADFD, .base = base };
+
+  /* Replace the old directory info (if any).  */
+  if (0 < subdirlen && !chdirable (fd))
+    close (fd);
+  c->chdir_current = chdir_current;
+  c->fd = newfd;
+  c->subdirlen = newdirlen;
+  if (subdir != newdir)
+    memmove (subdir, newdir, newdirlen);
+  return (struct fdbase) { .fd = newfd, .base = base };
 }
 
 struct fdbase
