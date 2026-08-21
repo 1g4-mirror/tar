@@ -24,7 +24,7 @@ manipulate without using the @command{tar} utility or Tar mode in
 @acronym{GNU} Emacs.
 
 Physically, an archive consists of a series of file entries terminated
-by an end-of-archive entry, which consists of two 512 blocks of zero
+by an end-of-archive entry, which consists of two 512-byte blocks of zero
 bytes.  A file
 entry usually describes one of the files in the archive (an
 @dfn{archive member}), and consists of a file header and the contents
