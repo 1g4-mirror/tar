@@ -975,13 +975,13 @@ read_name_from_file (struct name_elt *ent)
 	}
     }
 
-  if (counter == 0 && c != EOF)
+  if (counter == 0 && 0 <= c)
     return file_list_skip;
 
   if (counter == name_buffer_length)
     name_buffer = xpalloc (name_buffer, &name_buffer_length, 1, -1, 1);
   name_buffer[counter] = 0;
-  return (counter == 0 && c == EOF) ? file_list_end : file_list_success;
+  return (counter == 0 && c < 0) ? file_list_end : file_list_success;
 }
 
 static bool
