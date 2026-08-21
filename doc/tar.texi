@@ -2528,7 +2528,7 @@ superuser privileges and can be a pain to manage.
 
 During a @option{--create} operation, enables automatic compressed
 format recognition based on the archive suffix.  The effect of this
-option is cancelled by @option{--no-auto-compress}.  @xref{gzip}.
+option is canceled by @option{--no-auto-compress}.  @xref{gzip}.
 
 @opsummary{backup}
 @item --backup=@var{backup-type}
@@ -10388,7 +10388,7 @@ the numeric ids from the archive, ignoring the names.
 
 This is useful in certain circumstances, when restoring a backup from
 an emergency floppy with different passwd/group files for example.
-It is otherwise impossible to extract files with the right ownerships
+It is otherwise impossible to extract files with the right ownership
 if the password file in use during the extraction does not match the
 one belonging to the file system(s) being extracted.  This occurs,
 for example, if you are restoring your files after a major crash and
@@ -10680,7 +10680,7 @@ To force creation a @GNUTAR{} archive, use option
 Starting from version 1.14 @GNUTAR{} features full support for
 @acronym{POSIX.1-2001} archives.
 
-A @acronym{POSIX} conformant archive will be created if @command{tar}
+An archive conforming to @acronym{POSIX} will be created if @command{tar}
 was given @option{--format=posix} (@option{--format=pax}) option.  No
 special option is required to read and extract from a @acronym{POSIX}
 archive.
@@ -11427,7 +11427,7 @@ file name lengths.  The binary and old @acronym{ASCII} formats have a maximum fi
 length of 256, and the new @acronym{ASCII} and @acronym{CRC ASCII} formats have a max
 file length of 1024.  @acronym{GNU} @command{cpio} can read and write archives
 with arbitrary file name lengths, but other @command{cpio} implementations
-may crash unexplainedly trying to read them.
+may crash trying to read them.
 
 @command{tar} handles symbolic links in the form in which it comes in @acronym{BSD};
 @command{cpio} doesn't handle symbolic links in the form in which it comes
@@ -11540,7 +11540,7 @@ the creation and manipulation of archives located on magnetic tape was
 the original purpose of @command{tar}, it contains many features making
 such manipulation easier.
 
-Archives are usually written on dismountable media---tape cartridges,
+Archives are usually written on mountable media---tape cartridges,
 mag tapes, or floppy disks.
 
 The amount of data a tape or disk holds depends not only on its size,

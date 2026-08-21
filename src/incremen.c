@@ -26,7 +26,7 @@
 #include <same-inode.h>
 #include "common.h"
 
-/* Incremental dump specialities.  */
+/* Incremental dump specialties.  */
 
 /* Which child files to save under a directory.  */
 enum children

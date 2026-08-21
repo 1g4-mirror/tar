@@ -137,7 +137,7 @@ struct sparse_header
 /* The old GNU format header conflicts with POSIX format in such a way that
    POSIX archives may fool old GNU tar's, and POSIX tar's might well be
    fooled by old GNU tar archives.  An old GNU format header uses the space
-   used by the prefix field in a POSIX header, and cumulates information
+   used by the prefix field in a POSIX header, and accumulates information
    normally found in a GNU extra header.  With an old GNU tar header, we
    never see any POSIX header nor GNU extra header.  Supplementary sparse
    headers are allowed, however.  */

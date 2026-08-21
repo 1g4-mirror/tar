@@ -1697,7 +1697,7 @@ struct xhdr_tab const xhdr_tab[] = {
   { "GNU.sparse.size",       sparse_size_coder, sparse_size_decoder,
     XHDR_PROTECTED, false },
   /* tar 1.14 - 1.15.1 keywords. Multiple instances of these appeared in 'x'
-     headers, and each of them was meaningful. It confilcted with POSIX specs,
+     headers, and each of them was meaningful. It conflicted with POSIX specs,
      which requires that "when extended header records conflict, the last one
      given in the header shall take precedence." */
   { "GNU.sparse.offset",     sparse_offset_coder, sparse_offset_decoder,

@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2026-08-20
+GNU tar NEWS - User visible changes. 2026-08-21
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version 1.35.90 (git)
@@ -219,7 +219,7 @@ Bug introduced with the addition of that option in 1.28.
 * Support for zstd compression
 
 New option '--zstd' instructs tar to use zstd as compression program.
-When listing, extractng and comparing, zstd compressed archives are
+When listing, extracting and comparing, zstd compressed archives are
 recognized automatically.
 When '-a' option is in effect, zstd compression is selected if the
 destination archive name ends in '.zst' or '.tzst'.
@@ -785,7 +785,7 @@ the following variables:
 ** Fix restoring files from backup (debian bug #508199).
 ** Correctly restore modes and permissions on existing directories.
 ** The --remove-files option removes files only if they were
-succesfully stored in the archive.
+successfully stored in the archive.
 ** Fix storing and listing of the volume labels in POSIX format.
 ** Improve algorithm for splitting long file names (ustar
 format).
@@ -1130,8 +1130,8 @@ for example, while comparing 'tar cv' and 'tar tv' outputs.
 as well as that about directories.
 
 ** The --checkpoint option takes an optional argument specifying the number
-of records between the two successive checkpoints.   Optional dot
-starting the argument intructs tar to print dots instead of textual
+of records between the two successive checkpoints.   An optional dot
+starting the argument instructs tar to print dots instead of textual
 checkpoints.
 
 ** The --totals option can be used with any tar operation (previous versions
@@ -1245,7 +1245,7 @@ tar to refuse to extract files from standard input.
 
 version 1.15 - Sergey Poznyakoff, 2004-12-20
 
-* Compressed archives are recognised automatically, it is no longer
+* Compressed archives are recognized automatically; it is no longer
 necessary to specify -Z, -z, or -j options to read them.  Thus, you can
 now run 'tar tf archive.tar.gz'.
 
@@ -1488,7 +1488,7 @@ version 1.13.16 - Paul Eggert, 1999-12-13.
   before extracting it.  If the existing file is a symbolic link, the
   link is removed and not the pointed-to file.  There is one
   exception: existing nonempty directories are not removed, nor are
-  their ownerships or permissions extracted.  This fixes some
+  their ownership or permissions extracted.  This fixes some
   longstanding security problems.
 
   The new --overwrite option enables the old default behavior.
