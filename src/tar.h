@@ -298,9 +298,9 @@ struct xattr_array
 
 struct xattr_map
 {
-  struct xattr_array *xm_map;
   idx_t xm_size;   /* Size of the xattr map */
   idx_t xm_max;    /* Max. number of entries in xattr_map */
+  struct xattr_array *xm_map _GL_ATTRIBUTE_COUNTED_BY (xm_max);
 };
 
 struct tar_stat_info
