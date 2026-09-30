@@ -46,6 +46,10 @@ enum
 
     /* Follow symlinks, regardless of open_searchdir_how.  */
     FDBASE_FOLLOW = 1 << 3,
+
+    /* Do not follow symlinks, regardless of open_searchdir_how.
+       This option overrides FDBASE_FOLLOW.  */
+    FDBASE_NOFOLLOW = 1 << 4,
   };
 
 static void namebuf_add_dir (namebuf_t, char const *);
@@ -716,7 +720,7 @@ remove_any_file (const char *file_name, enum remove_option option)
      non-directory.  */
   bool try_unlink_first = cannot_unlink_dir ();
 
-  struct fdbase f = fdbase (file_name);
+  struct fdbase f = fdbase_opendir (file_name, FDBASE_NOFOLLOW);
 
   if (try_unlink_first)
     {
@@ -783,7 +787,8 @@ remove_any_file (const char *file_name, enum remove_option option)
 	      }
 
 	    free (directory);
-	    return safer_rmdir (file_name, fdbase (file_name)) == 0;
+	    struct fdbase f1 = fdbase_opendir (file_name, FDBASE_NOFOLLOW);
+	    return safer_rmdir (file_name, f1) == 0;
 	  }
 	}
       break;
@@ -1294,8 +1299,9 @@ open_subdir (int fd, char const *subdir, int fflags)
 {
   struct open_how how =
     {
-      .flags = (open_searchdir_how.flags
-		& ~(fflags & FDBASE_FOLLOW ? O_NOFOLLOW : 0)),
+      .flags = ((open_searchdir_how.flags
+		 & ~(fflags & FDBASE_FOLLOW ? O_NOFOLLOW : 0))
+		| (fflags & FDBASE_NOFOLLOW ? O_NOFOLLOW : 0)),
       .resolve = fflags & FDBASE_ESCAPE ? 0 : open_searchdir_how.resolve
     };
   return openat2 (fd, subdir, &how, sizeof how);
@@ -1729,8 +1735,8 @@ namebuf_finish (namebuf_t buf)
 }
 
 /* Return the filenames in directory NAME, relative to the chdir_fd.
-   If the directory does not exist, report error if MUST_EXIST is
-   true.
+   If MUST_EXIST, report an error if the directory does not exist;
+   if !MUST_EXIST, do not follow symlinks regardless of -h.
 
    Return NULL on errors.
 */
@@ -1739,9 +1745,11 @@ tar_savedir (const char *name, bool must_exist)
 {
   char *ret = NULL;
   DIR *dir = NULL;
-  struct fdbase f = fdbase (name);
+  struct fdbase f = fdbase_opendir (name, must_exist ? 0 : FDBASE_NOFOLLOW);
   int fd = (f.fd == BADFD ? -1
-	    : openat (f.fd, f.base, open_read_flags | O_DIRECTORY));
+	    : openat (f.fd, f.base,
+		      (open_read_flags | O_DIRECTORY
+		       | (must_exist ? 0 : O_NOFOLLOW))));
   if (fd < 0)
     {
       if (!must_exist && errno == ENOENT)
