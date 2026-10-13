@@ -244,19 +244,14 @@ unquote_string (char *string)
 	case '7':
 	  {
 	    unsigned char value = *source++ - '0';
-
-	    if (*source < '0' || *source > '7')
+	    if (is_octal_digit (*source))
 	      {
-		*destination++ = value;
-		break;
+		value = value * 8 + (*source++ - '0');
+		unsigned char val;
+		if (is_octal_digit (*source) && !ckd_mul (&val, value, 8))
+		  value = val + (*source++ - '0');
 	      }
-	    unsigned char val1 = value * 8 + (*source++ - '0'), val2;
-	    if (*source < '0' || *source > '7' || ckd_mul (&val2, val1, 8))
-	      {
-		*destination++ = value;
-		break;
-	      }
-	    *destination++ = val2 + (*source++ - '0');
+	    *destination++ = value;
 	    break;
 	  }
 
